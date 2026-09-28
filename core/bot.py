@@ -19,8 +19,6 @@ class VexoraBot(commands.Bot):
             help_command=None
         )
 
-        self.synced = False
-
     async def setup_hook(self):
 
         print("⚙️ Loading Vexora systems...")
@@ -55,6 +53,18 @@ class VexoraBot(commands.Bot):
         await self.load_extension("cogs.counting")
         print("✅ Loaded: cogs.counting")
 
+        # =============================================
+        # GLOBAL SLASH COMMAND SYNC
+        # =============================================
+
+        print("🔄 Syncing global slash commands...")
+
+        synced = await self.tree.sync()
+
+        print(
+            f"🌐 Global slash commands synced: {len(synced)}"
+        )
+
     async def on_app_command_error(
         self,
         interaction: discord.Interaction,
@@ -67,24 +77,6 @@ class VexoraBot(commands.Bot):
         )
 
     async def on_ready(self):
-
-        if not self.synced:
-
-            print("🔄 Syncing slash commands...")
-
-            for guild in self.guilds:
-
-                self.tree.copy_global_to(
-                    guild=guild
-                )
-
-                await self.tree.sync(
-                    guild=guild
-                )
-
-            self.synced = True
-
-            print("🌐 Slash commands synced!")
 
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         print(f"🤖 Logged in as: {self.user}")
