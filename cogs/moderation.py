@@ -10,6 +10,10 @@ from core.database import (
 )
 
 
+# =========================
+# VEXORA THEME
+# =========================
+
 CRIMSON = discord.Color.from_rgb(150, 25, 35)
 
 
@@ -27,6 +31,7 @@ class Moderation(commands.Cog):
         ctx: commands.Context,
         member: discord.Member
     ):
+
         if member == ctx.author:
             await ctx.send(
                 "❌ You can't moderate yourself."
@@ -53,6 +58,12 @@ class Moderation(commands.Cog):
             return False
 
         bot_member = ctx.guild.me
+
+        if bot_member is None:
+            await ctx.send(
+                "❌ I couldn't verify my server permissions."
+            )
+            return False
 
         if member.top_role >= bot_member.top_role:
             await ctx.send(
@@ -85,7 +96,18 @@ class Moderation(commands.Cog):
         if not await self.hierarchy_check(ctx, member):
             return
 
-        await member.kick(reason=reason)
+        try:
+            await member.kick(reason=reason)
+
+        except discord.Forbidden:
+            return await ctx.send(
+                "❌ I don't have permission to kick that member."
+            )
+
+        except discord.HTTPException:
+            return await ctx.send(
+                "❌ Discord rejected the kick request. Please try again."
+            )
 
         await send_mod_log(
             ctx.guild,
@@ -148,15 +170,21 @@ class Moderation(commands.Cog):
         if not await self.hierarchy_check(ctx, member):
             return
 
-        await member.ban(reason=reason)
+        try:
+            await member.ban(reason=reason)
 
-        await send_mod_log(
-            ctx.guild,
-            "🔨 Ban",
-            member,
-            ctx.author,
-            reason
-        )
+        except discord.Forbidden:
+            return await ctx.send(
+                "❌ I don't have permission to ban that member."
+            )
+
+        except discord.HTTPException:
+            return await ctx.send(
+                "❌ Discord rejected the ban request. Please try again."
+            )
+
+        # Ban logging is handled by cogs/logging.py
+        # through on_member_ban to prevent duplicate logs.
 
         embed = discord.Embed(
             title="🔨 Member Banned",
@@ -191,7 +219,7 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     # =========================
-    # TIMEOUT
+    # TIMEOUT / MUTE
     # =========================
 
     @commands.hybrid_command(
@@ -219,10 +247,21 @@ class Moderation(commands.Cog):
                 "**1 minute** and **28 days**."
             )
 
-        await member.timeout(
-            timedelta(minutes=minutes),
-            reason=reason
-        )
+        try:
+            await member.timeout(
+                timedelta(minutes=minutes),
+                reason=reason
+            )
+
+        except discord.Forbidden:
+            return await ctx.send(
+                "❌ I don't have permission to timeout that member."
+            )
+
+        except discord.HTTPException:
+            return await ctx.send(
+                "❌ Discord rejected the timeout request."
+            )
 
         await send_mod_log(
             ctx.guild,
@@ -288,37 +327,38 @@ class Moderation(commands.Cog):
             )
 
         except (ValueError, discord.NotFound):
-
             return await ctx.send(
                 "❌ Invalid user ID."
             )
 
-        try:
+        except discord.HTTPException:
+            return await ctx.send(
+                "❌ I couldn't retrieve that user."
+            )
 
+        try:
             await ctx.guild.unban(
                 user,
                 reason=reason
             )
 
         except discord.NotFound:
-
             return await ctx.send(
                 "❌ That user is not currently banned."
             )
 
         except discord.Forbidden:
-
             return await ctx.send(
                 "❌ I don't have permission to unban that user."
             )
 
-        await send_mod_log(
-            ctx.guild,
-            "🔓 Unban",
-            user,
-            ctx.author,
-            reason
-        )
+        except discord.HTTPException:
+            return await ctx.send(
+                "❌ Discord rejected the unban request."
+            )
+
+        # Unban logging is handled by cogs/logging.py
+        # through on_member_unban to prevent duplicate logs.
 
         embed = discord.Embed(
             title="🔓 User Unbanned",
@@ -374,15 +414,25 @@ class Moderation(commands.Cog):
             return
 
         if not member.is_timed_out():
-
             return await ctx.send(
                 f"❌ **{member}** is not currently timed out."
             )
 
-        await member.timeout(
-            None,
-            reason=reason
-        )
+        try:
+            await member.timeout(
+                None,
+                reason=reason
+            )
+
+        except discord.Forbidden:
+            return await ctx.send(
+                "❌ I don't have permission to remove that timeout."
+            )
+
+        except discord.HTTPException:
+            return await ctx.send(
+                "❌ Discord rejected the unmute request."
+            )
 
         await send_mod_log(
             ctx.guild,
@@ -441,18 +491,37 @@ class Moderation(commands.Cog):
     ):
 
         if amount < 1 or amount > 100:
-
             return await ctx.send(
                 "❌ Amount must be between **1 and 100**."
             )
 
-        deleted = await ctx.channel.purge(
-            limit=amount + 1
-        )
+        try:
+            deleted = await ctx.channel.purge(
+                limit=amount + 1
+            )
+
+        except discord.Forbidden:
+            return await ctx.send(
+                "❌ I don't have permission to delete messages here."
+            )
+
+        except discord.HTTPException:
+            return await ctx.send(
+                "❌ Discord rejected the purge request."
+            )
 
         count = max(
             len(deleted) - 1,
             0
+        )
+
+        # Log purge action.
+        await send_mod_log(
+            ctx.guild,
+            "🧹 Purge",
+            ctx.author,
+            ctx.author,
+            f"Deleted {count} message(s) in {ctx.channel.mention}."
         )
 
         message = await ctx.send(
@@ -551,7 +620,6 @@ class Moderation(commands.Cog):
         )
 
         if not rows:
-
             return await ctx.send(
                 f"✅ **{member}** has no warnings."
             )
@@ -616,7 +684,6 @@ class Moderation(commands.Cog):
         )
 
         if deleted == 0:
-
             return await ctx.send(
                 f"ℹ️ **{member}** has no warnings to clear."
             )
@@ -646,6 +713,10 @@ class Moderation(commands.Cog):
             embed=embed
         )
 
+
+# =========================
+# SETUP
+# =========================
 
 async def setup(bot):
     await bot.add_cog(

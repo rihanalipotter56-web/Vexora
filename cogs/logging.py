@@ -8,7 +8,13 @@ from core.logger import (
 )
 
 
-CRIMSON = discord.Color.from_rgb(150, 25, 35)
+# ═════════════════════════════════════════════════════════════
+# VEXORA LOG COLORS
+# ═════════════════════════════════════════════════════════════
+
+HIGH = discord.Color.from_rgb(150, 25, 35)       # 🔴 #961923
+MEDIUM = discord.Color.from_rgb(241, 196, 15)   # 🟡 Yellow
+LOW = discord.Color.from_rgb(46, 204, 113)       # 🟢 Green
 
 
 class Logging(commands.Cog):
@@ -16,9 +22,9 @@ class Logging(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # =========================
+    # ═════════════════════════════════════════════════════════
     # MEMBER JOIN
-    # =========================
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -27,7 +33,7 @@ class Logging(commands.Cog):
             member.guild,
             "📥 Member Joined",
             f"{member.mention} joined the server.",
-            color=discord.Color.green(),
+            color=LOW,
             fields=[
                 (
                     "👤 Member",
@@ -39,12 +45,13 @@ class Logging(commands.Cog):
                     str(member.guild.member_count),
                     True
                 )
-            ]
+            ],
+            thumbnail=member.display_avatar.url
         )
 
-    # =========================
+    # ═════════════════════════════════════════════════════════
     # MEMBER LEAVE
-    # =========================
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
@@ -53,19 +60,20 @@ class Logging(commands.Cog):
             member.guild,
             "📤 Member Left",
             f"**{member}** left the server.",
-            color=discord.Color.orange(),
+            color=LOW,
             fields=[
                 (
                     "👤 Member",
                     f"{member}\n`{member.id}`",
                     True
                 )
-            ]
+            ],
+            thumbnail=member.display_avatar.url
         )
 
-    # =========================
-    # MESSAGE DELETE
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # MESSAGE DELETE 🔴
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
@@ -85,7 +93,7 @@ class Logging(commands.Cog):
             message.guild,
             "🗑️ Message Deleted",
             f"A message was deleted in {message.channel.mention}.",
-            color=discord.Color.red(),
+            color=HIGH,
             fields=[
                 (
                     "👤 Author",
@@ -106,9 +114,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # MESSAGE EDIT
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # MESSAGE EDIT 🟡
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -135,7 +143,7 @@ class Logging(commands.Cog):
             before.guild,
             "✏️ Message Edited",
             f"A message was edited in {before.channel.mention}.",
-            color=discord.Color.gold(),
+            color=MEDIUM,
             fields=[
                 (
                     "👤 Author",
@@ -149,21 +157,21 @@ class Logging(commands.Cog):
                     True
                 ),
                 (
-                    "Before",
+                    "⬅️ Before",
                     old_content,
                     False
                 ),
                 (
-                    "After",
+                    "➡️ After",
                     new_content,
                     False
                 )
             ]
         )
 
-    # =========================
-    # BAN
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # BAN 🔴
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
@@ -178,7 +186,7 @@ class Logging(commands.Cog):
             guild,
             "🔨 Member Banned",
             f"**{user}** was banned.",
-            color=discord.Color.red(),
+            color=HIGH,
             fields=[
                 (
                     "👤 User",
@@ -193,9 +201,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # UNBAN
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # UNBAN 🟢
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
@@ -210,7 +218,7 @@ class Logging(commands.Cog):
             guild,
             "🔓 Member Unbanned",
             f"**{user}** was unbanned.",
-            color=discord.Color.green(),
+            color=LOW,
             fields=[
                 (
                     "👤 User",
@@ -225,9 +233,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # CHANNEL CREATE
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # CHANNEL CREATE 🟡
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):
@@ -242,7 +250,7 @@ class Logging(commands.Cog):
             channel.guild,
             "📁 Channel Created",
             f"{channel.mention} was created.",
-            color=discord.Color.green(),
+            color=MEDIUM,
             fields=[
                 (
                     "📢 Channel",
@@ -262,9 +270,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # CHANNEL DELETE
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # CHANNEL DELETE 🔴
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
@@ -279,7 +287,7 @@ class Logging(commands.Cog):
             channel.guild,
             "🗑️ Channel Deleted",
             f"**#{channel.name}** was deleted.",
-            color=discord.Color.red(),
+            color=HIGH,
             fields=[
                 (
                     "📢 Channel",
@@ -299,9 +307,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # CHANNEL UPDATE
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # CHANNEL UPDATE 🟡
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_guild_channel_update(self, before, after):
@@ -350,7 +358,7 @@ class Logging(commands.Cog):
             after.guild,
             "✏️ Channel Updated",
             f"{after.mention} was updated.",
-            color=discord.Color.gold(),
+            color=MEDIUM,
             fields=[
                 (
                     "📢 Channel",
@@ -370,9 +378,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # ROLE CREATE
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # ROLE CREATE 🟡
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_guild_role_create(self, role):
@@ -387,7 +395,7 @@ class Logging(commands.Cog):
             role.guild,
             "🎭 Role Created",
             f"{role.mention} was created.",
-            color=discord.Color.green(),
+            color=MEDIUM,
             fields=[
                 (
                     "🎭 Role",
@@ -407,9 +415,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # ROLE DELETE
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # ROLE DELETE 🔴
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role):
@@ -424,7 +432,7 @@ class Logging(commands.Cog):
             role.guild,
             "🗑️ Role Deleted",
             f"**{role.name}** was deleted.",
-            color=discord.Color.red(),
+            color=HIGH,
             fields=[
                 (
                     "🎭 Role",
@@ -439,9 +447,9 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
-    # ROLE UPDATE
-    # =========================
+    # ═════════════════════════════════════════════════════════
+    # ROLE UPDATE 🟡
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_guild_role_update(self, before, after):
@@ -488,7 +496,7 @@ class Logging(commands.Cog):
             after.guild,
             "✏️ Role Updated",
             f"{after.mention} was updated.",
-            color=discord.Color.gold(),
+            color=MEDIUM,
             fields=[
                 (
                     "🎭 Role",
@@ -508,23 +516,16 @@ class Logging(commands.Cog):
             ]
         )
 
-    # =========================
+    # ═════════════════════════════════════════════════════════
     # MEMBER UPDATE
-    # =========================
+    # ═════════════════════════════════════════════════════════
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
 
-        changes = []
-
-        if before.nick != after.nick:
-
-            old_nick = before.nick or before.name
-            new_nick = after.nick or after.name
-
-            changes.append(
-                f"**Nickname:** `{old_nick}` → `{new_nick}`"
-            )
+        # ─────────────────────────────────────────────────────
+        # ROLE CHANGES 🟢
+        # ─────────────────────────────────────────────────────
 
         if before.roles != after.roles:
 
@@ -541,6 +542,8 @@ class Logging(commands.Cog):
             added = after_roles - before_roles
             removed = before_roles - after_roles
 
+            changes = []
+
             if added:
 
                 added_names = []
@@ -550,11 +553,13 @@ class Logging(commands.Cog):
                     role = after.guild.get_role(role_id)
 
                     if role:
-                        added_names.append(role.mention)
+                        added_names.append(
+                            role.mention
+                        )
 
                 if added_names:
                     changes.append(
-                        "**Role Added:** "
+                        "🟢 **Role Added:** "
                         + ", ".join(added_names)
                     )
 
@@ -564,124 +569,99 @@ class Logging(commands.Cog):
 
                 for role_id in removed:
 
-                    role = after.guild.get_role(role_id)
+                    role = before.guild.get_role(role_id)
 
                     if role:
-                        removed_names.append(role.name)
+                        removed_names.append(
+                            f"`{role.name}`"
+                        )
 
                 if removed_names:
                     changes.append(
-                        "**Role Removed:** "
+                        "🟢 **Role Removed:** "
                         + ", ".join(removed_names)
                     )
 
-        if not changes:
-            return
+            if changes:
 
-        executor = await get_audit_executor(
-            after.guild,
-            discord.AuditLogAction.member_role_update,
-            after.id
-        )
+                executor = await get_audit_executor(
+                    after.guild,
+                    discord.AuditLogAction.member_role_update,
+                    after.id
+                )
 
-        if not executor:
+                await send_log(
+                    after.guild,
+                    "🎭 Member Roles Updated",
+                    f"{after.mention}'s roles were changed.",
+                    color=LOW,
+                    fields=[
+                        (
+                            "👤 Member",
+                            f"{after}\n`{after.id}`",
+                            True
+                        ),
+                        (
+                            "🛡️ Changed By",
+                            executor_text(executor),
+                            True
+                        ),
+                        (
+                            "📝 Changes",
+                            "\n".join(changes),
+                            False
+                        )
+                    ]
+                )
+
+        # ─────────────────────────────────────────────────────
+        # NICKNAME CHANGE 🟡
+        # ─────────────────────────────────────────────────────
+
+        if before.nick != after.nick:
+
+            old_nick = before.nick or before.name
+            new_nick = after.nick or after.name
+
             executor = await get_audit_executor(
                 after.guild,
                 discord.AuditLogAction.member_update,
                 after.id
             )
 
-        await send_log(
-            after.guild,
-            "👤 Member Updated",
-            f"{after.mention} was updated.",
-            color=discord.Color.gold(),
-            fields=[
-                (
-                    "👤 Member",
-                    f"{after}\n`{after.id}`",
-                    True
-                ),
-                (
-                    "🛡️ Changed By",
-                    executor_text(executor),
-                    True
-                ),
-                (
-                    "📝 Changes",
-                    "\n".join(changes),
-                    False
-                )
-            ]
-        )
-
-    # =========================
-    # SERVER UPDATE
-    # =========================
-
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-
-        changes = []
-
-        if before.name != after.name:
-            changes.append(
-                f"**Server Name:** "
-                f"`{before.name}` → `{after.name}`"
+            await send_log(
+                after.guild,
+                "🏷️ Nickname Changed",
+                f"{after.mention}'s nickname was changed.",
+                color=MEDIUM,
+                fields=[
+                    (
+                        "👤 Member",
+                        f"{after}\n`{after.id}`",
+                        True
+                    ),
+                    (
+                        "🛡️ Changed By",
+                        executor_text(executor),
+                        True
+                    ),
+                    (
+                        "⬅️ Before",
+                        f"`{old_nick}`",
+                        True
+                    ),
+                    (
+                        "➡️ After",
+                        f"`{new_nick}`",
+                        True
+                    )
+                ]
             )
 
-        if before.description != after.description:
-            changes.append(
-                "**Server Description:** Updated"
-            )
 
-        if before.verification_level != after.verification_level:
-            changes.append(
-                f"**Verification Level:** "
-                f"`{before.verification_level}` → "
-                f"`{after.verification_level}`"
-            )
-
-        if (
-            before.default_role.permissions
-            != after.default_role.permissions
-        ):
-            changes.append(
-                "**@everyone Permissions:** Updated"
-            )
-
-        if not changes:
-            return
-
-        executor = await get_audit_executor(
-            after,
-            discord.AuditLogAction.guild_update,
-            after.id
-        )
-
-        await send_log(
-            after,
-            "🏠 Server Updated",
-            f"**{after.name}** server settings were changed.",
-            color=discord.Color.gold(),
-            fields=[
-                (
-                    "🛡️ Changed By",
-                    executor_text(executor),
-                    True
-                ),
-                (
-                    "📝 Changes",
-                    "\n".join(changes),
-                    False
-                )
-            ]
-        )
-
-
-# =========================
+# ═════════════════════════════════════════════════════════════
 # SETUP
-# =========================
+# ═════════════════════════════════════════════════════════════
 
 async def setup(bot):
     await bot.add_cog(Logging(bot))

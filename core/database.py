@@ -7,17 +7,12 @@ def get_connection():
     return sqlite3.connect(DB_PATH)
 
 
-# =========================================================
-# DATABASE SETUP
-# =========================================================
-
 def setup_database():
-
     conn = get_connection()
 
-    # =====================================================
+    # ═════════════════════════════════════════════
     # WARNINGS
-    # =====================================================
+    # ═════════════════════════════════════════════
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS warnings (
@@ -30,9 +25,9 @@ def setup_database():
         )
     """)
 
-    # =====================================================
-    # SERVER SETTINGS
-    # =====================================================
+    # ═════════════════════════════════════════════
+    # GUILD SETTINGS
+    # ═════════════════════════════════════════════
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS guild_settings (
@@ -41,7 +36,6 @@ def setup_database():
             welcome_enabled INTEGER DEFAULT 0,
             welcome_channel_id INTEGER,
             welcome_message TEXT,
-
             welcome_title TEXT,
             welcome_description TEXT,
             welcome_color INTEGER DEFAULT 9844011,
@@ -62,31 +56,49 @@ def setup_database():
         )
     """)
 
-    # =====================================================
-    # COUNTING GAME
-    # =====================================================
+    # ═════════════════════════════════════════════
+    # AUTOMOD FORBIDDEN WORDS
+    # ═════════════════════════════════════════════
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS automod_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id INTEGER NOT NULL,
+            word TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            UNIQUE(guild_id, word)
+        )
+    """)
+
+    # ═════════════════════════════════════════════
+    # COUNTING
+    # ═════════════════════════════════════════════
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS counting_settings (
             guild_id INTEGER PRIMARY KEY,
 
             channel_id INTEGER,
-
             correct_emoji TEXT,
             wrong_emoji TEXT,
-
             daily_goal INTEGER DEFAULT 0,
 
             current_number INTEGER DEFAULT 0,
             last_user_id INTEGER,
+            goal_reached_date TEXT,
 
-            goal_reached_date TEXT
+            high_score INTEGER DEFAULT 0,
+            high_score_user_id INTEGER,
+
+            total_correct INTEGER DEFAULT 0,
+            total_resets INTEGER DEFAULT 0
         )
     """)
 
-    # =====================================================
-    # UPGRADE OLDER DATABASES
-    # =====================================================
+    # ═════════════════════════════════════════════
+    # SAFE DATABASE UPGRADES
+    # ═════════════════════════════════════════════
 
     columns = {
         row[1]
@@ -102,7 +114,6 @@ def setup_database():
         "welcome_thumbnail": "TEXT",
         "welcome_image": "TEXT",
         "welcome_footer": "TEXT",
-
         "automod_enabled": "INTEGER DEFAULT 1",
         "automod_role_id": "INTEGER",
         "automod_timeout": "INTEGER DEFAULT 5",
@@ -122,22 +133,56 @@ def setup_database():
                 """
             )
 
+    counting_columns = {
+        row[1]
+        for row in conn.execute(
+            "PRAGMA table_info(counting_settings)"
+        ).fetchall()
+    }
+
+    counting_new_columns = {
+        "high_score": "INTEGER DEFAULT 0",
+        "high_score_user_id": "INTEGER",
+        "total_correct": "INTEGER DEFAULT 0",
+        "total_resets": "INTEGER DEFAULT 0",
+    }
+
+    for column, definition in counting_new_columns.items():
+
+        if column not in counting_columns:
+
+            conn.execute(
+                f"""
+                ALTER TABLE counting_settings
+                ADD COLUMN {column} {definition}
+                """
+            )
+
     conn.commit()
     conn.close()
 
 
-# =========================================================
-# WARNING SYSTEM
-# =========================================================
+# ═════════════════════════════════════════════
+# WARNINGS
+# ═════════════════════════════════════════════
 
-def add_warning(guild_id, user_id, moderator_id, reason):
-
+def add_warning(
+    guild_id,
+    user_id,
+    moderator_id,
+    reason
+):
     conn = get_connection()
 
     cursor = conn.execute(
         """
         INSERT INTO warnings
-        (guild_id, user_id, moderator_id, reason)
+        (
+            guild_id,
+            user_id,
+            moderator_id,
+            reason
+        )
         VALUES (?, ?, ?, ?)
         """,
         (
@@ -156,15 +201,22 @@ def add_warning(guild_id, user_id, moderator_id, reason):
     return warning_id
 
 
-def get_warnings(guild_id, user_id):
-
+def get_warnings(
+    guild_id,
+    user_id
+):
     conn = get_connection()
 
     rows = conn.execute(
         """
-        SELECT id, moderator_id, reason, created_at
+        SELECT
+            id,
+            moderator_id,
+            reason,
+            created_at
         FROM warnings
-        WHERE guild_id = ? AND user_id = ?
+        WHERE guild_id = ?
+          AND user_id = ?
         ORDER BY id DESC
         """,
         (
@@ -178,14 +230,17 @@ def get_warnings(guild_id, user_id):
     return rows
 
 
-def clear_warnings(guild_id, user_id):
-
+def clear_warnings(
+    guild_id,
+    user_id
+):
     conn = get_connection()
 
     cursor = conn.execute(
         """
         DELETE FROM warnings
-        WHERE guild_id = ? AND user_id = ?
+        WHERE guild_id = ?
+          AND user_id = ?
         """,
         (
             guild_id,
@@ -201,9 +256,9 @@ def clear_warnings(guild_id, user_id):
     return deleted
 
 
-# =========================================================
+# ═════════════════════════════════════════════
 # GUILD SETTINGS
-# =========================================================
+# ═════════════════════════════════════════════
 
 def ensure_guild(guild_id):
 
@@ -211,7 +266,8 @@ def ensure_guild(guild_id):
 
     conn.execute(
         """
-        INSERT OR IGNORE INTO guild_settings (guild_id)
+        INSERT OR IGNORE INTO guild_settings
+        (guild_id)
         VALUES (?)
         """,
         (guild_id,)
@@ -265,7 +321,6 @@ def set_welcome_settings(
     image=None,
     footer=None
 ):
-
     ensure_guild(guild_id)
 
     conn = get_connection()
@@ -289,7 +344,10 @@ def set_welcome_settings(
 
         if value is not None:
 
-            updates.append(f"{column} = ?")
+            updates.append(
+                f"{column} = ?"
+            )
+
             values.append(value)
 
     if updates:
@@ -299,7 +357,7 @@ def set_welcome_settings(
         conn.execute(
             f"""
             UPDATE guild_settings
-            SET {", ".join(updates)}
+            SET {', '.join(updates)}
             WHERE guild_id = ?
             """,
             values
@@ -309,9 +367,9 @@ def set_welcome_settings(
     conn.close()
 
 
-# =========================================================
+# ═════════════════════════════════════════════
 # AUTOMOD SETTINGS
-# =========================================================
+# ═════════════════════════════════════════════
 
 def get_automod_settings(guild_id):
 
@@ -348,7 +406,6 @@ def set_automod_settings(
     repeat_enabled=None,
     mention_enabled=None
 ):
-
     ensure_guild(guild_id)
 
     conn = get_connection()
@@ -369,7 +426,10 @@ def set_automod_settings(
 
         if value is not None:
 
-            updates.append(f"{column} = ?")
+            updates.append(
+                f"{column} = ?"
+            )
+
             values.append(value)
 
     if updates:
@@ -379,7 +439,7 @@ def set_automod_settings(
         conn.execute(
             f"""
             UPDATE guild_settings
-            SET {", ".join(updates)}
+            SET {', '.join(updates)}
             WHERE guild_id = ?
             """,
             values
@@ -389,8 +449,10 @@ def set_automod_settings(
     conn.close()
 
 
-def clear_automod_role(guild_id):
-
+def set_automod_role(
+    guild_id,
+    role_id
+):
     ensure_guild(guild_id)
 
     conn = get_connection()
@@ -398,19 +460,159 @@ def clear_automod_role(guild_id):
     conn.execute(
         """
         UPDATE guild_settings
-        SET automod_role_id = NULL
+        SET automod_role_id = ?
         WHERE guild_id = ?
         """,
-        (guild_id,)
+        (
+            role_id,
+            guild_id
+        )
     )
 
     conn.commit()
     conn.close()
 
 
-# =========================================================
-# COUNTING GAME
-# =========================================================
+def clear_automod_role(guild_id):
+
+    set_automod_role(
+        guild_id,
+        None
+    )
+
+
+# ═════════════════════════════════════════════
+# AUTOMOD FORBIDDEN WORDS
+# ═════════════════════════════════════════════
+
+def add_automod_word(
+    guild_id,
+    word
+):
+    """
+    Add a forbidden word for a guild.
+
+    Returns:
+        True  -> word added
+        False -> word already exists
+    """
+
+    word = word.strip().lower()
+
+    if not word:
+        return False
+
+    conn = get_connection()
+
+    try:
+
+        cursor = conn.execute(
+            """
+            INSERT OR IGNORE INTO automod_words
+            (
+                guild_id,
+                word
+            )
+            VALUES (?, ?)
+            """,
+            (
+                guild_id,
+                word
+            )
+        )
+
+        added = cursor.rowcount > 0
+
+        conn.commit()
+
+    finally:
+
+        conn.close()
+
+    return added
+
+
+def remove_automod_word(
+    guild_id,
+    word
+):
+    """
+    Remove a forbidden word.
+
+    Returns:
+        True  -> removed
+        False -> word wasn't found
+    """
+
+    word = word.strip().lower()
+
+    conn = get_connection()
+
+    cursor = conn.execute(
+        """
+        DELETE FROM automod_words
+        WHERE guild_id = ?
+          AND word = ?
+        """,
+        (
+            guild_id,
+            word
+        )
+    )
+
+    removed = cursor.rowcount > 0
+
+    conn.commit()
+    conn.close()
+
+    return removed
+
+
+def get_automod_words(guild_id):
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT word
+        FROM automod_words
+        WHERE guild_id = ?
+        ORDER BY word ASC
+        """,
+        (guild_id,)
+    ).fetchall()
+
+    conn.close()
+
+    return [
+        row[0]
+        for row in rows
+    ]
+
+
+def clear_automod_words(guild_id):
+
+    conn = get_connection()
+
+    cursor = conn.execute(
+        """
+        DELETE FROM automod_words
+        WHERE guild_id = ?
+        """,
+        (guild_id,)
+    )
+
+    deleted = cursor.rowcount
+
+    conn.commit()
+    conn.close()
+
+    return deleted
+
+
+# ═════════════════════════════════════════════
+# COUNTING
+# ═════════════════════════════════════════════
 
 def ensure_counting(guild_id):
 
@@ -418,7 +620,8 @@ def ensure_counting(guild_id):
 
     conn.execute(
         """
-        INSERT OR IGNORE INTO counting_settings (guild_id)
+        INSERT OR IGNORE INTO counting_settings
+        (guild_id)
         VALUES (?)
         """,
         (guild_id,)
@@ -443,7 +646,11 @@ def get_counting_settings(guild_id):
             daily_goal,
             current_number,
             last_user_id,
-            goal_reached_date
+            goal_reached_date,
+            high_score,
+            high_score_user_id,
+            total_correct,
+            total_resets
         FROM counting_settings
         WHERE guild_id = ?
         """,
@@ -462,7 +669,6 @@ def set_counting_settings(
     wrong_emoji=None,
     daily_goal=None
 ):
-
     ensure_counting(guild_id)
 
     conn = get_connection()
@@ -481,7 +687,10 @@ def set_counting_settings(
 
         if value is not None:
 
-            updates.append(f"{column} = ?")
+            updates.append(
+                f"{column} = ?"
+            )
+
             values.append(value)
 
     if updates:
@@ -491,7 +700,7 @@ def set_counting_settings(
         conn.execute(
             f"""
             UPDATE counting_settings
-            SET {", ".join(updates)}
+            SET {', '.join(updates)}
             WHERE guild_id = ?
             """,
             values
@@ -507,7 +716,6 @@ def update_counting_progress(
     last_user_id,
     goal_reached_date=None
 ):
-
     ensure_counting(guild_id)
 
     conn = get_connection()
@@ -515,12 +723,11 @@ def update_counting_progress(
     conn.execute(
         """
         UPDATE counting_settings
-
         SET
             current_number = ?,
             last_user_id = ?,
-            goal_reached_date = ?
-
+            goal_reached_date = ?,
+            total_correct = total_correct + 1
         WHERE guild_id = ?
         """,
         (
@@ -535,6 +742,84 @@ def update_counting_progress(
     conn.close()
 
 
+def update_high_score(
+    guild_id,
+    score,
+    user_id
+):
+    ensure_counting(guild_id)
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE counting_settings
+        SET
+            high_score = ?,
+            high_score_user_id = ?
+        WHERE guild_id = ?
+        """,
+        (
+            score,
+            user_id,
+            guild_id
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def increment_counting_reset(guild_id):
+
+    ensure_counting(guild_id)
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE counting_settings
+        SET total_resets = total_resets + 1
+        WHERE guild_id = ?
+        """,
+        (guild_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_counting_leaderboard(
+    guild_id,
+    limit=10
+):
+    ensure_counting(guild_id)
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT
+            high_score_user_id,
+            high_score
+        FROM counting_settings
+        WHERE guild_id = ?
+          AND high_score > 0
+          AND high_score_user_id IS NOT NULL
+        ORDER BY high_score DESC
+        LIMIT ?
+        """,
+        (
+            guild_id,
+            limit
+        )
+    ).fetchall()
+
+    conn.close()
+
+    return rows
+
+
 def reset_counting_progress(guild_id):
 
     ensure_counting(guild_id)
@@ -544,12 +829,10 @@ def reset_counting_progress(guild_id):
     conn.execute(
         """
         UPDATE counting_settings
-
         SET
             current_number = 0,
             last_user_id = NULL,
             goal_reached_date = NULL
-
         WHERE guild_id = ?
         """,
         (guild_id,)
